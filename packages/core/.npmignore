@@ -1,0 +1,7 @@
+__tests__/
+src/
+tsconfig.json
+tsconfig.test.json
+*.zip
+*.tar.gz
+*.tar
