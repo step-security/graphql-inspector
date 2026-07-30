@@ -8,3 +8,4 @@ packages/**/*.md
 .husky/
 .eslintcache
 .github/
+*.yaml
