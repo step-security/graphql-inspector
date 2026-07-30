@@ -70,7 +70,7 @@
     "@actions/core": "2.0.3",
     "@actions/github": "8.0.1",
     "@graphql-inspector/core": "*",
-    "@whatwg-node/fetch": "0.10.3",
+    "@whatwg-node/fetch": "0.10.13",
     "axios": "^1.18.1",
     "dataloader": "2.2.2",
     "graphql": "16.10.0",
