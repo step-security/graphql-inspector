@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /dist
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /packages/action
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /packages/config
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /packages/core
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /packages/loaders/loaders
+    schedule:
+      interval: daily
