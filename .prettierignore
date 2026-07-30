@@ -1,0 +1,10 @@
+dist/
+.vscode/
+.bob/
+.changeset/*.md
+package-lock.json
+packages/core/CHANGELOG.md
+packages/**/*.md
+.husky/
+.eslintcache
+.github/

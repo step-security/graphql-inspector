@@ -1,0 +1,60 @@
+{
+  "name": "graphql-inspector-mono-repository",
+  "description": "Tooling for GraphQL. Compare GraphQL Schemas, check documents, find breaking changes, find similar types.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/step-security/graphql-inspector.git"
+  },
+  "author": "step-security",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/loaders/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "keywords": [
+    "graphql",
+    "graphql-inspector",
+    "tools",
+    "github-action"
+  ],
+  "scripts": {
+    "action": "ncc build packages/action/src/action.ts --out dist --minify --transpile-only",
+    "build": "bob build",
+    "check": "bob check",
+    "lint": "eslint --cache --ignore-path .gitignore .",
+    "lint:prettier": "prettier --cache --check .",
+    "package": "npm run build && npm run action",
+    "prebuild": "rimraf \"packages/**/dist/\"",
+    "prettier": "npm run lint:prettier -- --write",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@theguild/eslint-config": "0.13.4",
+    "@theguild/prettier-config": "2.0.7",
+    "@types/node": "20.14.15",
+    "@vercel/ncc": "0.38.3",
+    "bob-the-bundler": "7.0.1",
+    "eslint": "8.57.1",
+    "prettier": "3.3.3",
+    "rimraf": "5.0.10",
+    "typescript": "5.5.4",
+    "vite-tsconfig-paths": "5.1.4",
+    "vitest": "3.0.9"
+  },
+  "overrides": {
+    "@babel/runtime": "7.26.10",
+    "@octokit/types": "13.10.0",
+    "braces": "3.0.3",
+    "cookie": "1.0.2",
+    "cross-spawn": "6.0.6",
+    "dompurify": "3.3.2",
+    "esbuild": "0.25.1",
+    "eslint-plugin-unicorn": "56.0.1",
+    "graphql": "16.10.0",
+    "micromatch": "4.0.8"
+  }
+}

@@ -1,0 +1,37 @@
+name: Integration
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches-ignore:
+      - main
+jobs:
+  Action:
+    name: Test Inspector Action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Make changes to schema
+        run: |
+          sed -i '/title: String @deprecated(reason: "No more used")/d' ./example/schemas/schema.graphql
+          sed -i 's/createdAt: String/createdAt: String!/g' ./example/schemas/schema.graphql
+          sed -i 's/modifiedAt: String/modifiedAt: String!/g' ./example/schemas/schema.graphql
+          sed -i 's/post: Post!/post(id: ID): Post!/g' ./example/schemas/schema.graphql
+          cat ./example/schemas/schema.graphql
+
+      - name: Run Inspector
+        uses: ./
+        id: inspector
+        with:
+          experimental_merge: false
+          schema: '${{ github.head_ref || github.ref_name }}:example/schemas/schema.graphql'
+          rules: |
+            suppressRemovalOfDeprecatedField
+            ./example/rules/custom-rule.js
+
+      - name: Validate result
+        if: steps.inspector.outputs.changes != 4
+        run: echo 'Expected 4 changes received ${{ steps.inspector.outputs.changes }}' && exit 1
