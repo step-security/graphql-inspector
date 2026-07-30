@@ -72,7 +72,7 @@
     "@graphql-inspector/core": "*",
     "@whatwg-node/fetch": "0.10.3",
     "axios": "^1.18.1",
-    "dataloader": "2.2.2",
+    "dataloader": "2.2.3",
     "graphql": "16.10.0",
     "js-yaml": "4.3.0",
     "probot": "13.2.2",
