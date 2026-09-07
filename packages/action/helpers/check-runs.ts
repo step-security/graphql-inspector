@@ -17,7 +17,7 @@ export async function start({
   logger: Logger;
 }): Promise<number> {
   try {
-    const result = await context.octokit.checks.create({
+    const result = await context.octokit.rest.checks.create({
       owner,
       repo,
       name: 'graphql-inspector',
@@ -60,7 +60,7 @@ export async function annotate({
   try {
     await Promise.all(
       batches.map(async chunk => {
-        await context.octokit.checks.update({
+        await context.octokit.rest.checks.update({
           owner,
           repo,
           check_run_id: checkRunId,
@@ -95,7 +95,7 @@ export async function complete({
   logger: Logger;
 }) {
   try {
-    await context.octokit.checks.update({
+    await context.octokit.rest.checks.update({
       owner,
       repo,
       check_run_id: checkRunId,
