@@ -108,11 +108,7 @@ describe('Inspector Action', () => {
       base: {
         ref: 'master',
       },
-<<<<<<< 2d20012e10931438d69b7eaf3d57edf70fd2e4b1
-    } as unknown as Awaited<ReturnType<typeof getAssociatedPullRequest>>);
-=======
     } as PullRequest);
->>>>>>> 676df8fff6742bbc6d74eae4a892463fad594b4f
     mockFileLoader.mockReturnValue(mockLoadFile);
 
     process.env.GITHUB_WORKSPACE = '/workspace';

@@ -1,38 +1,9 @@
 {
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
-<<<<<<< 2d20012e10931438d69b7eaf3d57edf70fd2e4b1
-    "incremental": true,
-    "baseUrl": ".",
-    "rootDir": "packages",
-    "outDir": "dist",
-    "target": "ES2021",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "lib": ["ESNext"],
-    "importHelpers": true,
-    "preserveConstEnums": true,
-    "downlevelIteration": true,
-    "sourceMap": true,
-    "declaration": true,
-    "tsBuildInfoFile": ".cache/tsconfig.tsbuildinfo",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "skipLibCheck": true,
-    "types": ["vitest/globals"],
-    "paths": {
-      "@graphql-inspector/core": ["packages/core/src/index.ts"],
-      "@graphql-inspector/config": ["packages/config/src/index.ts"],
-      "@graphql-inspector/loaders": ["packages/loaders/loaders/src/index.ts"]
-    }
-=======
     "noEmit": true,
     "types": ["vitest/globals"],
     "tsBuildInfoFile": "dist/tsconfig.test.tsbuildinfo"
->>>>>>> 676df8fff6742bbc6d74eae4a892463fad594b4f
   },
   "include": ["packages/**/__tests__/**/*", "packages/testing/src"],
   "exclude": ["**/dist", "**/node_modules/**", "packages/**/__tests__/**/assets"]

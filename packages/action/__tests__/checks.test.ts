@@ -31,6 +31,7 @@ describe('updateCheckRun', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('completes the check run when the first update returns 404 and a retry succeeds', async () => {

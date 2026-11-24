@@ -1,4 +1,0 @@
-{
-  "pages": ["diff", "coverage", "audit", "introspect", "serve", "similar", "validate"],
-  "title": "Commands"
-}
