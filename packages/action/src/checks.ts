@@ -11,6 +11,31 @@ type UpdateCheckRunOptions = Required<
   >
 >;
 
+type UpdateCheckRunParams = NonNullable<Parameters<OctokitInstance['rest']['checks']['update']>[0]>;
+
+const NOT_FOUND_RETRY_DELAYS_MS = [1000, 2000, 4000];
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function updateWithNotFoundRetry(octokit: OctokitInstance, params: UpdateCheckRunParams) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await octokit.rest.checks.update(params);
+    } catch (error: any) {
+      const delay = NOT_FOUND_RETRY_DELAYS_MS[attempt];
+      if (error?.status !== 404 || delay === undefined) {
+        throw error;
+      }
+      core.warning(
+        `Check run ${params.check_run_id} not found, retrying in ${delay}ms (attempt ${attempt + 1} of ${NOT_FOUND_RETRY_DELAYS_MS.length})`,
+      );
+      await sleep(delay);
+    }
+  }
+}
+
 export async function updateCheckRun(
   octokit: OctokitInstance,
   checkId: number,
@@ -23,7 +48,7 @@ export async function updateCheckRun(
 
   core.info(`annotations to be sent: ${annotations.length}`);
 
-  await octokit.rest.checks.update({
+  await updateWithNotFoundRetry(octokit, {
     check_run_id: checkId,
     completed_at: new Date().toISOString(),
     status: 'completed',
@@ -36,20 +61,18 @@ export async function updateCheckRun(
   });
 
   try {
-    await Promise.all(
-      batches.map(async chunk => {
-        await octokit.rest.checks.update({
-          check_run_id: checkId,
-          ...github.context.repo,
-          output: {
-            title,
-            summary,
-            annotations: chunk,
-          },
-        } as any);
-        core.info(`annotations sent (${chunk.length})`);
-      }),
-    );
+    for (const chunk of batches) {
+      await updateWithNotFoundRetry(octokit, {
+        check_run_id: checkId,
+        ...github.context.repo,
+        output: {
+          title,
+          summary,
+          annotations: chunk,
+        },
+      } as any);
+      core.info(`annotations sent (${chunk.length})`);
+    }
   } catch (error) {
     core.error(`failed to send annotations: ${error}`);
     throw error;

@@ -43,13 +43,61 @@ import { changesInUnion } from './union.js';
 
 export type AddChange = (change: Change) => void;
 
+export interface DiffWarning {
+  message: string;
+}
+
+export interface DiffOptions {
+  onWarning?: (warning: DiffWarning) => void;
+}
+
+export interface InternalDiffOptions extends DiffOptions {
+  /**
+   * Skip computing the changes nested under an added type or directive (its fields,
+   * arguments, directive usages, ...). These are implied by the addition itself and
+   * would be removed by the `simplifyChanges` rule anyway, so computing them is wasted
+   * work that dominates the cost of diffing large schema additions.
+   */
+  skipNestedAdditions?: boolean;
+}
+
 export function diffSchema(
   oldSchema: GraphQLSchema | null,
   newSchema: GraphQLSchema | null,
+  options: InternalDiffOptions = {},
 ): Change[] {
   const changes: Change[] = [];
 
-  function addChange(change: Change) {
+  // A schema built from SDL has AST nodes on its types even without a schema definition.
+  function hasAst(schema: GraphQLSchema): boolean {
+    return (
+      !!schema.astNode ||
+      schema.extensionASTNodes.length > 0 ||
+      Object.values(schema.getTypeMap()).some(type => !!type.astNode)
+    );
+  }
+
+  const oldHasAst = !!oldSchema && hasAst(oldSchema);
+  const newHasAst = !!newSchema && hasAst(newSchema);
+  // Directive usages are read from AST nodes, so they are compared only when both schemas have one.
+  // - old has AST, new has AST -> compared
+  // - old has AST, new has none -> skipped, warns
+  // - old has none, new has AST -> skipped, warns
+  // - neither has AST (e.g. two introspection-built schemas) -> skipped, silent
+  // - either schema is null -> compared
+  const skipDirectiveUsages = !!oldSchema && !!newSchema && (!oldHasAst || !newHasAst);
+
+  if (skipDirectiveUsages && oldHasAst !== newHasAst) {
+    options.onWarning?.({
+      message:
+        'Directive usages were not compared because one schema has no AST (e.g. it was built from introspection)',
+    });
+  }
+
+  function addChange(change: Change): void {
+    if (skipDirectiveUsages && change.type.startsWith('DIRECTIVE_USAGE_')) {
+      return;
+    }
     changes.push(change);
   }
 
@@ -61,7 +109,9 @@ export function diffSchema(
     {
       onAdded(directive) {
         addChange(directiveAdded(directive));
-        changesInDirective(null, directive, addChange);
+        if (!options.skipNestedAdditions) {
+          changesInDirective(null, directive, addChange);
+        }
       },
       onRemoved(directive) {
         addChange(directiveRemoved(directive));
@@ -84,7 +134,9 @@ export function diffSchema(
     {
       onAdded(type) {
         addChange(typeAdded(type));
-        changesInType(null, type, addChange);
+        if (!options.skipNestedAdditions) {
+          changesInType(null, type, addChange);
+        }
       },
       onRemoved(type) {
         addChange(typeRemoved(type));
@@ -95,36 +147,10 @@ export function diffSchema(
     },
   );
 
-  compareDirectiveLists(
-    oldSchema?.astNode?.directives || [],
-    newSchema?.astNode?.directives || [],
-    {
-      onAdded(directive) {
-        addChange(directiveUsageAdded(Kind.SCHEMA_DEFINITION, directive, newSchema, false));
-        directiveUsageChanged(null, directive, addChange);
-      },
-      onMutual(directive) {
-        directiveUsageChanged(directive.oldVersion, directive.newVersion, addChange);
-      },
-      onRemoved(directive) {
-        addChange(directiveUsageRemoved(Kind.SCHEMA_DEFINITION, directive, oldSchema));
-      },
-    },
-  );
-
-  /**
-   * Extracting directives from the schema definition requires using the AST. But the AST does not combine the
-   * definition and extensions like the GraphQL Type System. Therefore, the extensions must be looped over as well.
-   **/
-  for (
-    let e = 0;
-    e <
-    Math.max(oldSchema?.extensionASTNodes.length ?? 0, newSchema?.extensionASTNodes.length ?? 0);
-    e++
-  ) {
+  if (!skipDirectiveUsages) {
     compareDirectiveLists(
-      oldSchema?.extensionASTNodes[e]?.directives || [],
-      newSchema?.extensionASTNodes[e]?.directives || [],
+      oldSchema?.astNode?.directives || [],
+      newSchema?.astNode?.directives || [],
       {
         onAdded(directive) {
           addChange(directiveUsageAdded(Kind.SCHEMA_DEFINITION, directive, newSchema, false));
@@ -138,6 +164,34 @@ export function diffSchema(
         },
       },
     );
+
+    /**
+     * Extracting directives from the schema definition requires using the AST. But the AST does not combine the
+     * definition and extensions like the GraphQL Type System. Therefore, the extensions must be looped over as well.
+     **/
+    for (
+      let extensionIndex = 0;
+      extensionIndex <
+      Math.max(oldSchema?.extensionASTNodes.length ?? 0, newSchema?.extensionASTNodes.length ?? 0);
+      extensionIndex++
+    ) {
+      compareDirectiveLists(
+        oldSchema?.extensionASTNodes[extensionIndex]?.directives || [],
+        newSchema?.extensionASTNodes[extensionIndex]?.directives || [],
+        {
+          onAdded(directive) {
+            addChange(directiveUsageAdded(Kind.SCHEMA_DEFINITION, directive, newSchema, false));
+            directiveUsageChanged(null, directive, addChange);
+          },
+          onMutual(directive) {
+            directiveUsageChanged(directive.oldVersion, directive.newVersion, addChange);
+          },
+          onRemoved(directive) {
+            addChange(directiveUsageRemoved(Kind.SCHEMA_DEFINITION, directive, oldSchema));
+          },
+        },
+      );
+    }
   }
 
   return changes;

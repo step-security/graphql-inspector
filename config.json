@@ -1,0 +1,17 @@
+{
+  "$comment": "Managed automatically when syncing with upstream. Do not edit by hand.",
+  "schema_version": 1,
+  "onboarding_type": "copied",
+  "action_type": "node",
+  "upstream": {
+    "repository": "graphql-hive/graphql-inspector",
+    "synced_tag": "release-1795186478740",
+    "synced_commit": "978cdc2ab28a40f942bfcd420301472427e88c8c",
+    "archived": false
+  },
+  "build": {
+    "package_manager": "npm@11.19.1",
+    "node_version": "24",
+    "script": "package"
+  }
+}

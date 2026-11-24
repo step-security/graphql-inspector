@@ -1,8 +1,20 @@
 dist/
 .vscode/
+<<<<<<< 2d20012e10931438d69b7eaf3d57edf70fd2e4b1
 .bob/
 .changeset/*.md
 package-lock.json
+=======
+action/
+
+# action source can be prettified
+!packages/action
+
+# remove when prettier will support MDX (v3)
+.bob/
+.changeset/*.md
+pnpm-lock.yaml
+>>>>>>> 676df8fff6742bbc6d74eae4a892463fad594b4f
 packages/core/CHANGELOG.md
 packages/**/*.md
 .husky/

@@ -15,7 +15,7 @@ import {
   Kind,
   print,
 } from 'graphql';
-import { compareLists } from '../../utils/compare.js';
+import { compareLists, isDirectiveNodeEqual, isValueNodeEqual } from '../../utils/compare.js';
 import { AddChange } from '../schema.js';
 import {
   Change,
@@ -1097,6 +1097,10 @@ export function directiveUsageChanged(
   parentArgument?: GraphQLArgument,
   parentEnumValue?: GraphQLEnumValue,
 ) {
+  if (oldDirective && isDirectiveNodeEqual(oldDirective, newDirective)) {
+    return;
+  }
+
   compareLists(oldDirective?.arguments || [], newDirective.arguments || [], {
     onAdded(argument) {
       addChange(
@@ -1127,7 +1131,7 @@ export function directiveUsageChanged(
     onMutual(argument) {
       if (
         argument.oldVersion &&
-        print(argument.oldVersion.value) === print(argument.newVersion.value)
+        isValueNodeEqual(argument.oldVersion.value, argument.newVersion.value)
       ) {
         return;
       }
