@@ -1,8 +1,4 @@
 [[IgnoredVulns]]
-id = "GHSA-mh99-v99m-4gvg"
-reason = "brace-expansion ReDoS: only reachable via eslint's minimatch chain (devDependency), not bundled into dist/index.js"
-
-[[IgnoredVulns]]
 id = "GHSA-23c5-xmqv-rm74"
 reason = "minimatch ReDoS: pinned by eslint-plugin-sonarjs (devDependency, part of @theguild/eslint-config), not bundled into dist/index.js"
 
@@ -13,3 +9,15 @@ reason = "minimatch ReDoS: pinned by eslint-plugin-sonarjs (devDependency, part 
 [[IgnoredVulns]]
 id = "GHSA-7r86-cg39-jmmj"
 reason = "minimatch ReDoS: pinned by eslint-plugin-sonarjs (devDependency, part of @theguild/eslint-config), not bundled into dist/index.js"
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+reason = "minimatch globparts DoS: 9.x pinned by eslint-plugin-sonarjs, eslint-plugin-n and @typescript-eslint (exact deps of @theguild/eslint-config 0.13.4, latest), devDependency only, not bundled into dist/index.js"
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+reason = "glob AbortSignal bypass: glob 10 required by unified-engine via eslint-plugin-mdx (part of @theguild/eslint-config 0.13.4, latest), devDependency only, not bundled into dist/index.js"
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+reason = "zod memory exhaustion: zod ^3 required by bob-the-bundler 7.0.1 (latest stable, build tool only); fix exists only in zod 4, not bundled into dist/index.js"
