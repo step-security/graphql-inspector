@@ -1,31 +1,10 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "incremental": true,
-    "baseUrl": ".",
-    "rootDir": "packages",
-    "outDir": "dist",
-    "target": "ES2021",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "lib": ["ESNext"],
-    "importHelpers": true,
-    "preserveConstEnums": true,
-    "downlevelIteration": true,
-    "sourceMap": true,
-    "declaration": true,
-    "tsBuildInfoFile": ".cache/tsconfig.tsbuildinfo",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "skipLibCheck": true,
+    "noEmit": true,
     "types": ["vitest/globals"],
-    "paths": {
-      "@graphql-inspector/core": ["packages/core/src/index.ts"],
-      "@graphql-inspector/config": ["packages/config/src/index.ts"],
-      "@graphql-inspector/loaders": ["packages/loaders/loaders/src/index.ts"]
-    }
+    "tsBuildInfoFile": "dist/tsconfig.test.tsbuildinfo"
   },
-  "include": ["packages"]
+  "include": ["packages/**/__tests__/**/*", "packages/testing/src"],
+  "exclude": ["**/dist", "**/node_modules/**", "packages/**/__tests__/**/assets"]
 }

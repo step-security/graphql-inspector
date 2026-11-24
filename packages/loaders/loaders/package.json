@@ -1,12 +1,12 @@
 {
   "name": "@graphql-inspector/loaders",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "type": "module",
   "description": "Loaders in GraphQL Inspector",
   "repository": {
     "type": "git",
     "url": "step-security/graphql-inspector",
-    "directory": "packages/plugins/plugin"
+    "directory": "packages/plugins/loaders/loaders"
   },
   "author": {
     "name": "StepSecurity",
@@ -60,13 +60,13 @@
     "prepack": "bob prepack"
   },
   "peerDependencies": {
-    "@graphql-inspector/config": "^4.0.0",
-    "graphql": "^14.0.0 || ^15.0.0 || ^16.0.0"
+    "@graphql-inspector/config": "*",
+    "graphql": "^16.0.0 || ^17.0.0"
   },
   "dependencies": {
-    "@graphql-tools/load": "8.0.19",
-    "@graphql-tools/utils": "10.8.6",
-    "tslib": "2.6.2"
+    "@graphql-tools/load": "^8.1.16",
+    "@graphql-tools/utils": "^12.0.0",
+    "tslib": "~2.6.2"
   },
   "publishConfig": {
     "directory": "dist",

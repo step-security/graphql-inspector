@@ -1,7 +1,7 @@
 import type { MockedFunction } from 'vitest';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { CheckConclusion } from '../helpers/types.js';
+import { AnnotationFilterLevel, AnnotationLevel, CheckConclusion } from '../helpers/types.js';
 import { updateCheckRun } from '../src/checks.js';
 import { fileLoader } from '../src/files.js';
 import { getAssociatedPullRequest } from '../src/git.js';
@@ -17,17 +17,60 @@ const mockGetAssociatedPullRequest = getAssociatedPullRequest as MockedFunction<
   typeof getAssociatedPullRequest
 >;
 
+type PullRequest = Awaited<ReturnType<typeof getAssociatedPullRequest>>;
+
 describe('Inspector Action', () => {
   const mockLoadFile = vi.fn();
+  const mockCreateCheck = vi.fn();
+
+  function setInputs(inputs: Record<string, string>) {
+    vi.spyOn(core, 'getInput').mockImplementation(name => {
+      const values: Record<string, string> = {
+        'github-token': 'MOCK_GITHUB_TOKEN',
+        schema: 'master:schema.graphql',
+        ...inputs,
+      };
+      return values[name] || '';
+    });
+  }
+
+  // Produces one breaking, one dangerous and one safe change
+  function mockSchemasWithAllChangeLevels() {
+    mockLoadFile
+      .mockResolvedValueOnce(/* GraphQL */ `
+        type Query {
+          value: String
+          choice: Choice
+        }
+        enum Choice {
+          A
+        }
+      `)
+      .mockResolvedValueOnce(/* GraphQL */ `
+        type Query {
+          value: Int # Breaking: field type changed from String to Int
+          choice: Choice
+          added: String # Safe: field added
+        }
+        enum Choice {
+          A
+          B # Dangerous: enum value added
+        }
+      `);
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLoadFile.mockReset();
+    mockUpdateCheckRun.mockClear();
 
     // Mock error/warning/info/debug
     vi.spyOn(core, 'error').mockImplementation(vi.fn());
     vi.spyOn(core, 'warning').mockImplementation(vi.fn());
     vi.spyOn(core, 'info').mockImplementation(vi.fn());
     vi.spyOn(core, 'debug').mockImplementation(vi.fn());
+    vi.spyOn(core, 'setOutput').mockImplementation(vi.fn());
+    vi.spyOn(core, 'setFailed').mockImplementation(vi.fn());
 
     vi.spyOn(core, 'getInput').mockImplementation((name: string, _options) => {
       switch (name) {
@@ -43,9 +86,10 @@ describe('Inspector Action', () => {
     vi.spyOn(github, 'getOctokit').mockReturnValue({
       rest: {
         checks: {
-          create: vi.fn().mockResolvedValue({
+          create: mockCreateCheck.mockResolvedValue({
             data: {
               id: '2',
+              html_url: 'https://github.com/some-owner/graphql-inspector/runs/2',
             },
           }),
         },
@@ -64,10 +108,262 @@ describe('Inspector Action', () => {
       base: {
         ref: 'master',
       },
-    } as unknown as Awaited<ReturnType<typeof getAssociatedPullRequest>>);
+    } as PullRequest);
     mockFileLoader.mockReturnValue(mockLoadFile);
 
     process.env.GITHUB_WORKSPACE = '/workspace';
+  });
+
+  describe('annotation-level', () => {
+    beforeEach(() => {
+      mockSchemasWithAllChangeLevels();
+    });
+
+    it.each([
+      { level: '', levels: ['failure', 'notice', 'warning'] },
+      { level: AnnotationFilterLevel.All, levels: ['failure', 'notice', 'warning'] },
+      { level: AnnotationFilterLevel.Dangerous, levels: ['failure', 'warning'] },
+      { level: AnnotationFilterLevel.Breaking, levels: ['failure'] },
+    ])('filters at "$level" without changing the summary or failure', async ({ level, levels }) => {
+      setInputs({ 'annotation-level': level });
+
+      await run();
+
+      const result = mockUpdateCheckRun.mock.calls[0][2];
+      expect(result.conclusion).toBe(CheckConclusion.Failure);
+      expect(result.output.annotations?.map(a => a.annotation_level).sort()).toEqual(levels);
+      expect(result.output.summary).toContain('Found 3 changes');
+      expect(result.output.summary).toContain('Breaking: 1');
+      expect(result.output.summary).toContain('Dangerous: 1');
+      expect(result.output.summary).toContain('Safe: 1');
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '3');
+    });
+
+    it('disables all annotations when annotations is false', async () => {
+      setInputs({ 'annotation-level': AnnotationFilterLevel.Breaking, annotations: 'false' });
+
+      await run();
+
+      const result = mockUpdateCheckRun.mock.calls[0][2];
+      expect(result.output.annotations).toEqual([]);
+      expect(result.conclusion).toBe(CheckConclusion.Failure);
+      expect(result.output.summary).toContain('Found 3 changes');
+    });
+
+    it.each(['approve-label', 'fail-on-breaking'])('preserves the %s override', async override => {
+      setInputs({
+        'annotation-level': AnnotationFilterLevel.Breaking,
+        [override]: override === 'approve-label' ? 'expected-breaking-change' : 'false',
+      });
+      if (override === 'approve-label') {
+        mockGetAssociatedPullRequest.mockResolvedValue({
+          state: 'open',
+          number: 1,
+          labels: [{ name: 'expected-breaking-change' }],
+          base: { ref: 'master' },
+        } as PullRequest);
+      }
+
+      await run();
+
+      const result = mockUpdateCheckRun.mock.calls[0][2];
+      expect(result.conclusion).toBe(CheckConclusion.Success);
+      expect(result.output.annotations?.map(a => a.annotation_level)).toEqual(['failure']);
+      expect(result.output.summary).toContain('Breaking: 1');
+    });
+
+    it('filters using the severity after applying rules', async () => {
+      setInputs({
+        'annotation-level': AnnotationFilterLevel.Breaking,
+        rules: 'example/rules/custom-rule.js',
+      });
+
+      await run();
+
+      const result = mockUpdateCheckRun.mock.calls[0][2];
+      expect(result.output.annotations).toEqual([]);
+      expect(result.conclusion).toBe(CheckConclusion.Success);
+      expect(result.output.summary).toContain('Found 3 changes');
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '3');
+    });
+
+    it('rejects invalid levels before creating a check', async () => {
+      setInputs({ 'annotation-level': 'error' });
+
+      await run();
+
+      expect(core.setFailed).toHaveBeenCalledWith(
+        'Invalid annotation-level. Expected one of: all, dangerous, breaking.',
+      );
+      expect(github.getOctokit).not.toHaveBeenCalled();
+      expect(mockUpdateCheckRun).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('outputs', () => {
+    it('sets breaking, dangerous and safe change messages', async () => {
+      setInputs({});
+      mockSchemasWithAllChangeLevels();
+
+      await run();
+
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '3');
+      expect(core.setOutput).toHaveBeenCalledWith('breaking-changes', [
+        "Field 'Query.value' changed type from 'String' to 'Int'",
+      ]);
+      expect(core.setOutput).toHaveBeenCalledWith('dangerous-changes', [
+        "Enum value 'B' was added to enum 'Choice'",
+      ]);
+      expect(core.setOutput).toHaveBeenCalledWith('safe-changes', [
+        "Field 'added' was added to object type 'Query'",
+      ]);
+    });
+
+    it('sets empty lists when there are no changes', async () => {
+      setInputs({});
+      const schema = /* GraphQL */ `
+        type Query {
+          value: String
+        }
+      `;
+      mockLoadFile.mockResolvedValueOnce(schema).mockResolvedValueOnce(schema);
+
+      await run();
+
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '0');
+      expect(core.setOutput).toHaveBeenCalledWith('breaking-changes', []);
+      expect(core.setOutput).toHaveBeenCalledWith('dangerous-changes', []);
+      expect(core.setOutput).toHaveBeenCalledWith('safe-changes', []);
+    });
+
+    it('groups changes using the severity after applying rules', async () => {
+      // This rule turns all changes into dangerous ones
+      setInputs({ rules: 'example/rules/custom-rule.js' });
+      mockSchemasWithAllChangeLevels();
+
+      await run();
+
+      expect(core.setOutput).toHaveBeenCalledWith('breaking-changes', []);
+      expect(core.setOutput).toHaveBeenCalledWith('dangerous-changes', [
+        "Field 'added' was added to object type 'Query'",
+        "Field 'Query.value' changed type from 'String' to 'Int'",
+        "Enum value 'B' was added to enum 'Choice'",
+      ]);
+      expect(core.setOutput).toHaveBeenCalledWith('safe-changes', []);
+    });
+  });
+
+  describe('create-action-check', () => {
+    beforeEach(() => {
+      mockSchemasWithAllChangeLevels();
+    });
+
+    it('creates a check linked from the failure title by default', async () => {
+      setInputs({});
+
+      await run();
+
+      expect(mockCreateCheck).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'GraphQL Inspector', status: 'in_progress' }),
+      );
+      const result = mockUpdateCheckRun.mock.calls[0][2];
+      expect(result.conclusion).toBe(CheckConclusion.Failure);
+      expect(result.output.title).toBe(
+        'Something is wrong with your schema. For more info see: https://github.com/some-owner/graphql-inspector/runs/2',
+      );
+      expect(core.setFailed).not.toHaveBeenCalled();
+    });
+
+    it('skips the check and fails the action on breaking changes when disabled', async () => {
+      setInputs({ 'create-action-check': 'false' });
+
+      await run();
+
+      expect(mockCreateCheck).not.toHaveBeenCalled();
+      expect(mockUpdateCheckRun).not.toHaveBeenCalled();
+      expect(core.setFailed).toHaveBeenCalledWith(CheckConclusion.Failure);
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '3');
+      expect(core.setOutput).toHaveBeenCalledWith('breaking-changes', [
+        "Field 'Query.value' changed type from 'String' to 'Int'",
+      ]);
+    });
+
+    it.each(['approve-label', 'fail-on-breaking'])(
+      'does not fail the action when disabled and %s overrides the conclusion',
+      async override => {
+        setInputs({
+          'create-action-check': 'false',
+          [override]: override === 'approve-label' ? 'expected-breaking-change' : 'false',
+        });
+        if (override === 'approve-label') {
+          mockGetAssociatedPullRequest.mockResolvedValue({
+            state: 'open',
+            number: 1,
+            labels: [{ name: 'expected-breaking-change' }],
+            base: { ref: 'master' },
+          } as PullRequest);
+        }
+
+        await run();
+
+        expect(mockCreateCheck).not.toHaveBeenCalled();
+        expect(mockUpdateCheckRun).not.toHaveBeenCalled();
+        expect(core.setFailed).not.toHaveBeenCalled();
+      },
+    );
+
+    it('does not fail the action when disabled and there are no breaking changes', async () => {
+      setInputs({
+        'create-action-check': 'false',
+        rules: 'example/rules/custom-rule.js',
+      });
+
+      await run();
+
+      expect(mockCreateCheck).not.toHaveBeenCalled();
+      expect(mockUpdateCheckRun).not.toHaveBeenCalled();
+      expect(core.setFailed).not.toHaveBeenCalled();
+      expect(core.setOutput).toHaveBeenCalledWith('changes', '3');
+    });
+  });
+
+  describe('updateCheckRun', () => {
+    it('sends annotation batches to the check run sequentially', async () => {
+      const { updateCheckRun: realUpdateCheckRun } =
+        await vi.importActual<typeof import('../src/checks.js')>('../src/checks.js');
+
+      const annotations = Array.from({ length: 120 }, (_, i) => ({
+        path: 'schema.graphql',
+        start_line: i + 1,
+        end_line: i + 1,
+        annotation_level: AnnotationLevel.Warning,
+        message: `Change ${i + 1}`,
+        title: `Change ${i + 1}`,
+      }));
+
+      const events: string[] = [];
+      const updateCheck = vi.fn().mockImplementation(async (params: any) => {
+        const sent = params.output?.annotations?.length;
+        if (sent === undefined) {
+          return;
+        }
+        events.push(`start:${sent}`);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        events.push(`end:${sent}`);
+      });
+      const octokit = { rest: { checks: { update: updateCheck } } };
+
+      await realUpdateCheckRun(octokit as any, 2, {
+        conclusion: CheckConclusion.Success,
+        output: {
+          title: 'title',
+          summary: 'summary',
+          annotations,
+        },
+      });
+
+      expect(events).toEqual(['start:50', 'end:50', 'start:50', 'end:50', 'start:20', 'end:20']);
+    });
   });
 
   describe('rules', () => {

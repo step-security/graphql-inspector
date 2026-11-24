@@ -10,3 +10,6 @@ private-key.pem
 .idea/
 .next/
 .eslintcache
+
+# TypeScript incremental build caches
+*.tsbuildinfo

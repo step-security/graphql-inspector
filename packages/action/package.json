@@ -1,6 +1,6 @@
 {
   "name": "@graphql-inspector/action",
-  "version": "5.0.21",
+  "version": "6.2.9",
   "type": "module",
   "description": "GraphQL Inspector functionality for GitHub Actions",
   "repository": {
@@ -67,11 +67,11 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@actions/core": "2.0.3",
-    "@actions/github": "8.0.1",
+    "@actions/core": "^2.0.3",
+    "@actions/github": "^8.0.1",
     "@graphql-inspector/core": "*",
     "@whatwg-node/fetch": "0.10.3",
-    "axios": "^1.20.0",
+    "axios": "^1.21.1",
     "dataloader": "2.2.2",
     "graphql": "16.10.0",
     "js-yaml": "^5.4.1",
@@ -79,7 +79,8 @@
     "tslib": "2.6.2"
   },
   "devDependencies": {
-    "@types/js-yaml": "4.0.9"
+    "@types/js-yaml": "4.0.9",
+    "graphql-yoga": "5.22.0"
   },
   "publishConfig": {
     "directory": "dist",
