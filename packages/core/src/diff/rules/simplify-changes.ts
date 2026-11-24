@@ -1,10 +1,13 @@
 import { ChangeType } from '../changes/change.js';
 import { Rule } from './types.js';
 
+// A change belongs here only when it adds a whole node, so that every nested change
+// reported under that node's path is implied by it: a new type implies its fields.
+// A change that edits an existing node at its own path, such as a description or an
+// interface added to it, must not be listed, since it would hide every other change
+// to that node and to its children.
 const simpleChangeTypes = new Set([
   ChangeType.DirectiveAdded,
-  ChangeType.DirectiveArgumentAdded,
-  ChangeType.DirectiveLocationAdded,
   ChangeType.DirectiveUsageArgumentAdded,
   ChangeType.DirectiveUsageArgumentDefinitionAdded,
   ChangeType.DirectiveUsageEnumAdded,
@@ -31,13 +34,8 @@ const simpleChangeTypes = new Set([
   ChangeType.EnumValueDeprecationReasonChanged,
 
   ChangeType.FieldDeprecationReasonAdded,
-  ChangeType.FieldDescriptionAdded,
   ChangeType.InputFieldAdded,
-  ChangeType.InputFieldDescriptionAdded,
-  ChangeType.ObjectTypeInterfaceAdded,
   ChangeType.TypeAdded,
-  ChangeType.TypeDescriptionAdded,
-  ChangeType.UnionMemberAdded,
 ]);
 
 const parentPath = (path: string) => {
@@ -48,20 +46,17 @@ const parentPath = (path: string) => {
 export const simplifyChanges: Rule = ({ changes }) => {
   // Track which paths contained changes that represent a group of changes to the schema
   // e.g. the addition of a type implicity contains the addition of that type's fields.
-  const changePaths: string[] = [];
+  // A Set keeps the lookup constant, so adding a type with many fields stays linear.
+  const changePaths = new Set<string>();
 
   const filteredChanges = changes.filter(({ path, type }) => {
     if (path) {
-      const parent = parentPath(path);
       // check if parent or the current node was changed using a
       // "simple change" (aka a change that encapsulates a group of changes)
-      const matches = changePaths.filter(
-        matchedPath => matchedPath === parent || matchedPath === path,
-      );
-      const hasChangedParent = matches.length > 0;
+      const hasChangedParent = changePaths.has(parentPath(path)) || changePaths.has(path);
 
       if (simpleChangeTypes.has(type)) {
-        changePaths.push(path);
+        changePaths.add(path);
       }
 
       return !hasChangedParent;

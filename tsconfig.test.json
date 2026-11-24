@@ -1,5 +1,7 @@
 {
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
+<<<<<<< 2d20012e10931438d69b7eaf3d57edf70fd2e4b1
     "incremental": true,
     "baseUrl": ".",
     "rootDir": "packages",
@@ -26,6 +28,12 @@
       "@graphql-inspector/config": ["packages/config/src/index.ts"],
       "@graphql-inspector/loaders": ["packages/loaders/loaders/src/index.ts"]
     }
+=======
+    "noEmit": true,
+    "types": ["vitest/globals"],
+    "tsBuildInfoFile": "dist/tsconfig.test.tsbuildinfo"
+>>>>>>> 676df8fff6742bbc6d74eae4a892463fad594b4f
   },
-  "include": ["packages"]
+  "include": ["packages/**/__tests__/**/*", "packages/testing/src"],
+  "exclude": ["**/dist", "**/node_modules/**", "packages/**/__tests__/**/assets"]
 }

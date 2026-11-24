@@ -1,11 +1,12 @@
 {
-  "name": "graphql-inspector-mono-repository",
+  "name": "@step-security/graphql-inspector-mono-repository",
   "description": "Tooling for GraphQL. Compare GraphQL Schemas, check documents, find breaking changes, find similar types.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/step-security/graphql-inspector.git"
   },
   "author": "step-security",
+  "publisher": "step-security",
   "license": "MIT",
   "private": true,
   "workspaces": [
@@ -13,7 +14,9 @@
     "packages/loaders/*"
   ],
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24",
+    "npm": ">=11",
+    "pnpm": ">=11.27.1"
   },
   "keywords": [
     "graphql",
@@ -39,9 +42,10 @@
     "@vercel/ncc": "0.38.3",
     "bob-the-bundler": "7.0.1",
     "eslint": "8.57.1",
+    "graphql-16": "npm:graphql@16.14.2",
     "prettier": "3.3.3",
     "rimraf": "5.0.10",
-    "typescript": "5.5.4",
+    "typescript": "5.9.3",
     "vite-tsconfig-paths": "5.1.4",
     "vitest": "3.2.7"
   },
@@ -56,5 +60,13 @@
     "eslint-plugin-unicorn": "56.0.1",
     "graphql": "16.10.0",
     "micromatch": "4.0.8"
+  },
+  "homepage": "https://github.com/step-security/graphql-inspector#readme",
+  "bugs": {
+    "url": "https://github.com/step-security/graphql-inspector/issues"
+  },
+  "dependencies": {
+    "axios": "^1.20.0",
+    "@actions/core": "^2.0.3"
   }
 }

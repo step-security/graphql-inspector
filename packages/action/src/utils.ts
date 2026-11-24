@@ -2,6 +2,9 @@ import { existsSync } from 'fs';
 import { isAbsolute, resolve } from 'path';
 import * as core from '@actions/core';
 import { DiffRule, Rule } from '@graphql-inspector/core';
+import { AnnotationFilterLevel } from '../helpers/types.js';
+
+const annotationFilterLevels: readonly string[] = Object.values(AnnotationFilterLevel);
 
 function ensureAbsolute(filepath: string, basepath: string = process.cwd()) {
   return isAbsolute(filepath) ? filepath : resolve(basepath, filepath);
@@ -43,6 +46,10 @@ export function castToBoolean(value: string | boolean, defaultValue?: boolean): 
   }
 
   return true;
+}
+
+export function isAnnotationFilterLevel(value: string): value is AnnotationFilterLevel {
+  return annotationFilterLevels.includes(value);
 }
 
 export function getInputAsArray(name: string, options?: core.InputOptions): string[] {
